@@ -19,11 +19,15 @@ type Context struct {
 	request        *http.Request
 	responseWriter http.ResponseWriter
 	ctx            context.Context
-	handler        ControllerHandler
-
+	
+	// 当前请求的handler链条
+	handlers []ControllerHandler
+	// 当前请求调用到调用链的哪个节点
+	index int
+	
 	// 超时标记
 	IsTimeOut bool
-
+	
 	// 写锁
 	writeMutex *sync.Mutex
 }
@@ -32,8 +36,10 @@ func NewContext(r *http.Request, rw http.ResponseWriter) *Context {
 	return &Context{
 		request:        r,
 		responseWriter: rw,
-		ctx:            r.Context(),
-		writeMutex:     &sync.Mutex{},
+		// 由于每次调用Next时index都会自增1，所以需要从-1开始加，这样才能正确使用handler
+		index:      -1,
+		ctx:        r.Context(),
+		writeMutex: &sync.Mutex{},
 	}
 }
 
@@ -57,6 +63,25 @@ func (ctx *Context) SetIsTimeOut() {
 
 func (ctx *Context) IsTimeout() bool {
 	return ctx.IsTimeOut
+}
+
+// SetHandlers 将路由中handlers注册到ctx中，后续通过 Next 函数依次调用
+func (ctx *Context) SetHandlers(handlers []ControllerHandler) {
+	ctx.handlers = handlers
+}
+
+// Next 核心函数，调用context的下一个函数
+// 调用时机：1、第一次启动服务的时候
+// 2、每个中间件都会调用 Next ，因此ctx.index是自增的
+func (ctx *Context) Next() error {
+	ctx.index++
+	if ctx.index < len(ctx.handlers) {
+		if err := ctx.handlers[ctx.index](ctx); err != nil {
+			return err
+		}
+	}
+	
+	return nil
 }
 
 // #endrigion
@@ -180,7 +205,7 @@ func (ctx *Context) BindJson(obj interface{}) error {
 		if err != nil {
 			return err
 		}
-
+		
 		// 重新设置Body，方便以后可以重复读取
 		ctx.request.Body = io.NopCloser(bytes.NewBuffer(body))
 		err = json.Unmarshal(body, obj)
@@ -190,7 +215,7 @@ func (ctx *Context) BindJson(obj interface{}) error {
 	} else {
 		return errors.New("ctx.request is empty")
 	}
-
+	
 	return nil
 }
 

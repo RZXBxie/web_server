@@ -1,6 +1,8 @@
 package controller
 
-import "github.com/RZXBxie/web_server/framework"
+import (
+	"github.com/RZXBxie/web_server/framework"
+)
 
 func SubjectAddController(c *framework.Context) error {
 	c.Json(200, "ok, SubjectAddController")

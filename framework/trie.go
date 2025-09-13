@@ -16,8 +16,8 @@ type node struct {
 	// segment uri中的字符串，代表这个节点表示的是路由中某个段的字符串
 	segment string
 
-	// handler 代表这个节点对应的handler，便于后续加载调用
-	handler ControllerHandler
+	// handlers 代表这个节点对应的handler，便于后续加载调用
+	handlers []ControllerHandler
 
 	// children 子节点
 	children []*node
@@ -27,7 +27,7 @@ func newNode() *node {
 	return &node{
 		isLast:   false,
 		segment:  "",
-		handler:  nil,
+		handlers: nil,
 		children: []*node{},
 	}
 }
@@ -112,7 +112,7 @@ func (n *node) matchNode(uri string) *node {
 }
 
 // AddRoute 添加路由
-func (trie *Trie) AddRoute(uri string, handler ControllerHandler) error {
+func (trie *Trie) AddRoute(uri string, handlers []ControllerHandler) error {
 	root := trie.root
 	// 去掉开头和结尾多余的"/" /user/name -> user/name
 	uri = strings.Trim(uri, "/")
@@ -149,7 +149,7 @@ func (trie *Trie) AddRoute(uri string, handler ControllerHandler) error {
 			node.segment = segment
 			if isLast {
 				node.isLast = true
-				node.handler = handler
+				node.handlers = handlers
 			}
 			root.children = append(root.children, node)
 			objNode = node
@@ -161,11 +161,11 @@ func (trie *Trie) AddRoute(uri string, handler ControllerHandler) error {
 }
 
 // FindHandler 根据路由查找handler
-func (trie *Trie) FindHandler(uri string) ControllerHandler {
+func (trie *Trie) FindHandler(uri string) []ControllerHandler {
 	uri = strings.Trim(uri, "/")
 	node := trie.root.matchNode(uri)
 	if node == nil {
 		return nil
 	}
-	return node.handler
+	return node.handlers
 }

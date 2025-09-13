@@ -21,14 +21,14 @@ type Core struct {
 
 // NewCore 初始化框架核心结构
 func NewCore() *Core {
-	
+
 	// 将二级map写入一级map
 	router := map[string]*Trie{}
 	router[HTTP_METHOD_GET] = NewTrie()
 	router[HTTP_METHOD_POST] = NewTrie()
 	router[HTTP_METHOD_PUT] = NewTrie()
 	router[HTTP_METHOD_DELETE] = NewTrie()
-	
+
 	return &Core{router}
 }
 
@@ -70,11 +70,11 @@ func (c *Core) FindRouterByRequest(req *http.Request) ControllerHandler {
 	// uri和method转为大写，保证大小写不敏感
 	uri := strings.ToUpper(req.URL.Path)
 	method := strings.ToUpper(req.Method)
-	
+
 	if methodHandlers, ok := c.router[method]; ok {
 		return methodHandlers.FindHandler(uri)
 	}
-	
+
 	return nil
 }
 
@@ -82,15 +82,15 @@ func (c *Core) FindRouterByRequest(req *http.Request) ControllerHandler {
 func (c *Core) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	log.Println("core.ServeHTTP")
 	ctx := NewContext(req, rw)
-	
+
 	router := c.FindRouterByRequest(req)
 	if router == nil {
 		ctx.Json(http.StatusNotFound, "404 page not found")
 		return
 	}
-	
+
 	log.Println("core.router")
-	
+
 	if err := router(ctx); err != nil {
 		ctx.Json(http.StatusInternalServerError, "500 Internal server error")
 		return

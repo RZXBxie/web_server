@@ -13,15 +13,17 @@ import (
 )
 
 // Context 自定义Context接口
+// 通过阅读源码发现，http.ListenAndServe 方法在Serve函数中产生了baseCtx，并通过c.serve方法往传递，
+// 最终会将ctx传递给req.ctx。因此我们自定义的Context结构就继承req.ctx
 type Context struct {
 	request        *http.Request
 	responseWriter http.ResponseWriter
 	ctx            context.Context
 	handler        ControllerHandler
-	
+
 	// 超时标记
 	IsTimeOut bool
-	
+
 	// 写锁
 	writeMutex *sync.Mutex
 }
@@ -178,7 +180,7 @@ func (ctx *Context) BindJson(obj interface{}) error {
 		if err != nil {
 			return err
 		}
-		
+
 		// 重新设置Body，方便以后可以重复读取
 		ctx.request.Body = io.NopCloser(bytes.NewBuffer(body))
 		err = json.Unmarshal(body, obj)
@@ -188,7 +190,7 @@ func (ctx *Context) BindJson(obj interface{}) error {
 	} else {
 		return errors.New("ctx.request is empty")
 	}
-	
+
 	return nil
 }
 

@@ -15,8 +15,7 @@ const (
 
 // Core 框架核心结构
 type Core struct {
-	// router 两级map方便路由寻址
-	// 一级为http method，二级为路由以及对应的handler
+	// router key对应HTTP的Method，value就是一棵路由树
 	router map[string]*Trie
 }
 

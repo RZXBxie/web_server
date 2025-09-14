@@ -1,12 +1,10 @@
 package controller
 
 import (
-	"net/http"
-
 	"github.com/RZXBxie/web_server/framework"
 )
 
-func UserLoginController(core *framework.Context) error {
-	core.Json(http.StatusOK, "ok, UserLoginController")
+func UserLoginController(c *framework.Context) error {
+	c.SetOkStatus().Json("ok, UserLoginController")
 	return nil
 }

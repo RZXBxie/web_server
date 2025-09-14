@@ -6,10 +6,10 @@ import (
 )
 
 type Trie struct {
-	root *node
+	root *Node
 }
 
-type node struct {
+type Node struct {
 	// isLast 代表这个节点是否可以成为最终的路由规则。该节点是否能成为一个独立的uri, 是否自身就是一个终极节点
 	isLast bool
 
@@ -20,15 +20,19 @@ type node struct {
 	handlers []ControllerHandler
 
 	// children 子节点
-	children []*node
+	children []*Node
+
+	// parent 这样路由树中每个节点都是双向指针
+	parent *Node
 }
 
-func newNode() *node {
-	return &node{
+func newNode() *Node {
+	return &Node{
 		isLast:   false,
 		segment:  "",
 		handlers: nil,
-		children: []*node{},
+		children: []*Node{},
+		parent:   nil,
 	}
 }
 
@@ -41,7 +45,7 @@ func isWildSegment(segment string) bool {
 	return strings.HasPrefix(segment, ":")
 }
 
-func (n *node) filterChildNode(segment string) []*node {
+func (n *Node) filterChildNode(segment string) []*Node {
 	if len(n.children) == 0 {
 		return nil
 	}
@@ -51,7 +55,7 @@ func (n *node) filterChildNode(segment string) []*node {
 		return n.children
 	}
 
-	childNodes := make([]*node, 0, len(n.children))
+	childNodes := make([]*Node, 0, len(n.children))
 	for _, child := range n.children {
 		// 如果子节点有通配符，则满足要求
 		if isWildSegment(child.segment) {
@@ -68,13 +72,14 @@ func (n *node) filterChildNode(segment string) []*node {
 // matchNode 从root开始查找，找到了就返回isLast=true的节点的指针，找不到就返回nil
 // 树结构：以 /user/name 和 /user/:id/name 为例
 //
-//		root
-//		└── "", isLast=false
-//		    └── user, isLast=false
-//	         ├── name, isLast=true
-//		        └── :id, isLast=false
-//	             └── name, isLast=true
-func (n *node) matchNode(uri string) *node {
+//			root
+//			└── "", isLast=false
+//	            └── "", isLast=false
+//			        └── user, isLast=false
+//		                ├── name, isLast=true
+//			            └── :id, isLast=false
+//		                    └── name, isLast=true
+func (n *Node) matchNode(uri string) *Node {
 	segments := strings.SplitN(uri, "/", 2)
 	segment := segments[0]
 
@@ -114,8 +119,6 @@ func (n *node) matchNode(uri string) *node {
 // AddRoute 添加路由
 func (trie *Trie) AddRoute(uri string, handlers []ControllerHandler) error {
 	root := trie.root
-	// 去掉开头和结尾多余的"/" /user/name -> user/name
-	uri = strings.Trim(uri, "/")
 	// 如果路由存在，则返回错误
 	if root.matchNode(uri) != nil {
 		return errors.New("Route exist: " + uri)
@@ -130,7 +133,7 @@ func (trie *Trie) AddRoute(uri string, handlers []ControllerHandler) error {
 		}
 		isLast := index == len(segments)-1
 
-		var objNode *node
+		var objNode *Node
 
 		// 查找是否存在现存的子节点
 		childNodes := root.filterChildNode(segment)
@@ -151,6 +154,7 @@ func (trie *Trie) AddRoute(uri string, handlers []ControllerHandler) error {
 				node.isLast = true
 				node.handlers = handlers
 			}
+			node.parent = root
 			root.children = append(root.children, node)
 			objNode = node
 		}
@@ -160,12 +164,25 @@ func (trie *Trie) AddRoute(uri string, handlers []ControllerHandler) error {
 	return nil
 }
 
-// FindHandler 根据路由查找handler
-func (trie *Trie) FindHandler(uri string) []ControllerHandler {
-	uri = strings.Trim(uri, "/")
-	node := trie.root.matchNode(uri)
-	if node == nil {
-		return nil
+// /user/name/:id -> ["", "user", "name", ":id"]
+// map["id"] = 123
+func (n *Node) findParamsFromEndNode(uri string) map[string]string {
+	ret := map[string]string{}
+	segments := strings.Split(uri, "/")
+	cnt := len(segments)
+	cur := n
+
+	for i := cnt - 1; i >= 0; i-- {
+		// 到根节点了，结束
+		if cur.segment == "" {
+			break
+		}
+
+		if isWildSegment(cur.segment) {
+			ret[cur.segment[1:]] = segments[i]
+		}
+		cur = cur.parent
 	}
-	return node.handlers
+
+	return ret
 }

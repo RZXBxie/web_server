@@ -7,7 +7,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"mime/multipart"
-	
+
 	"github.com/spf13/cast"
 )
 
@@ -25,7 +25,7 @@ type IRequest interface {
 	QueryString(key string, def string) (string, bool)
 	QueryStringSlice(key string, def []string) ([]string, bool)
 	Query(key string) interface{}
-	
+
 	// ParamInt 路由匹配中带的参数
 	// 形如 /book/:id
 	ParamInt(key string, def int) (int, bool)
@@ -35,7 +35,7 @@ type IRequest interface {
 	ParamBool(key string, def bool) (bool, bool)
 	ParamString(key string, def string) (string, bool)
 	Param(key string) interface{}
-	
+
 	// FormInt form 表单中带的参数
 	FormInt(key string, def int) (int, bool)
 	FormInt64(key string, def int64) (int64, bool)
@@ -46,30 +46,30 @@ type IRequest interface {
 	FormStringSlice(key string, def []string) ([]string, bool)
 	FormFile(key string) (*multipart.FileHeader, error)
 	Form(key string) interface{}
-	
+
 	// BindJson json body
 	BindJson(obj interface{}) error
-	
+
 	// BindXml xml body
 	BindXml(obj interface{}) error
-	
+
 	// GetRawData 其他格式
 	GetRawData() ([]byte, error)
-	
+
 	// 基础信息
-	
+
 	Uri() string
 	Method() string
 	Host() string
 	ClientIp() string
-	
+
 	// header
-	
+
 	Headers() map[string][]string
 	Header(key string) (string, bool)
-	
+
 	// cookie
-	
+
 	Cookies() map[string]string
 	Cookie(key string) (string, bool)
 }
@@ -93,7 +93,7 @@ func (ctx *Context) QueryInt(key string, def int) (int, bool) {
 			return cast.ToInt(vals[0]), true
 		}
 	}
-	
+
 	return def, false
 }
 
@@ -327,7 +327,7 @@ func (ctx *Context) BindJson(obj interface{}) error {
 		}
 		// 重新填充request.Body，为后续的逻辑二次读取做准备
 		ctx.request.Body = ioutil.NopCloser(bytes.NewBuffer(body))
-		
+
 		// 解析到obj结构体中
 		err = json.Unmarshal(body, obj)
 		if err != nil {
@@ -347,7 +347,7 @@ func (ctx *Context) BindXml(obj interface{}) error {
 			return err
 		}
 		ctx.request.Body = ioutil.NopCloser(bytes.NewBuffer(body))
-		
+
 		err = xml.Unmarshal(body, obj)
 		if err != nil {
 			return err

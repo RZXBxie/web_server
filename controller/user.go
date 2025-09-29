@@ -1,12 +1,14 @@
 package controller
 
 import (
-	"net/http"
+	"time"
 
 	"github.com/RZXBxie/web_server/framework"
 )
 
-func UserLoginController(core *framework.Context) error {
-	core.Json(http.StatusOK, "ok, UserLoginController")
+func UserLoginController(c *framework.Context) error {
+	foo, _ := c.QueryString("foo", "def")
+	time.Sleep(10 * time.Second)
+	c.SetOkStatus().Json("ok, UserLoginController" + foo)
 	return nil
 }

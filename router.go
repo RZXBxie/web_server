@@ -15,5 +15,10 @@ func registerRouter(core *framework.Core) {
 		subjectGroup.Get("/:id", controller.SubjectGetController)
 		subjectGroup.Put("/:id", controller.SubjectUpdateController)
 		subjectGroup.Get("/list/all", controller.SubjectListController)
+		subjectInnerGroup := subjectGroup.Group("/info")
+		{
+			subjectInnerGroup.Use(controller.UserLoginController)
+			subjectInnerGroup.Get("/name", controller.SubjectDelController)
+		}
 	}
 }

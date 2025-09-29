@@ -1,33 +1,30 @@
 package controller
 
-import "github.com/RZXBxie/web_server/framework"
-
-func SubjectAddController(c *framework.Context) error {
-	c.Json(200, "ok, SubjectAddController")
-	return nil
-}
+import (
+	"github.com/RZXBxie/web_server/framework"
+)
 
 func SubjectListController(c *framework.Context) error {
-	c.Json(200, "ok, SubjectListController")
+	c.SetOkStatus().Json("ok, SubjectListController")
 	return nil
 }
 
 func SubjectDelController(c *framework.Context) error {
-	c.Json(200, "ok, SubjectDelController")
+	c.SetOkStatus().Json("ok, SubjectDelController")
 	return nil
 }
 
 func SubjectUpdateController(c *framework.Context) error {
-	c.Json(200, "ok, SubjectUpdateController")
+	c.SetOkStatus().Json("ok, SubjectUpdateController")
 	return nil
 }
 
 func SubjectGetController(c *framework.Context) error {
-	c.Json(200, "ok, SubjectGetController")
+	c.SetOkStatus().Json("ok, SubjectGetController")
 	return nil
 }
 
 func SubjectNameController(c *framework.Context) error {
-	c.Json(200, "ok, SubjectNameController")
+	c.SetOkStatus().Json("ok, SubjectNameController")
 	return nil
 }

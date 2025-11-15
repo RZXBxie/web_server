@@ -3,12 +3,11 @@ package controller
 import (
 	"time"
 
-	"github.com/RZXBxie/web_server/framework"
+	"github.com/RZXBxie/web_server/framework/gin"
 )
 
-func UserLoginController(c *framework.Context) error {
-	foo, _ := c.QueryString("foo", "def")
+func UserLoginController(c *gin.Context) {
+	foo, _ := c.DefaultQueryString("foo", "def")
 	time.Sleep(10 * time.Second)
-	c.SetOkStatus().Json("ok, UserLoginController" + foo)
-	return nil
+	c.ISetOkStatus().IJson("ok, UserLoginController" + foo)
 }

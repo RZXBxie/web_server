@@ -1,24 +1,28 @@
 package main
 
 import (
+	"time"
+
 	"github.com/RZXBxie/web_server/controller"
-	"github.com/RZXBxie/web_server/framework"
+	"github.com/RZXBxie/web_server/framework/gin"
+	"github.com/RZXBxie/web_server/framework/middleware"
 )
 
-func registerRouter(core *framework.Core) {
+func registerRouter(core *gin.Engine) {
 	// 静态路由匹配
-	core.Get("/user/login", controller.UserLoginController)
+	duration := time.Second * 5
+	core.GET("/user/login", middleware.Timeout(duration), controller.UserLoginController)
 	// 路由组+动态路由匹配
 	subjectGroup := core.Group("/subject")
 	{
-		subjectGroup.Delete("/:id", controller.SubjectDelController)
-		subjectGroup.Get("/:id", controller.SubjectGetController)
-		subjectGroup.Put("/:id", controller.SubjectUpdateController)
-		subjectGroup.Get("/list/all", controller.SubjectListController)
+		subjectGroup.DELETE("/:id", controller.SubjectDelController)
+		subjectGroup.GET("/:id", controller.SubjectGetController)
+		subjectGroup.PUT("/:id", controller.SubjectUpdateController)
+		subjectGroup.GET("/list/all", controller.SubjectListController)
 		subjectInnerGroup := subjectGroup.Group("/info")
 		{
 			subjectInnerGroup.Use(controller.UserLoginController)
-			subjectInnerGroup.Get("/name", controller.SubjectDelController)
+			subjectInnerGroup.GET("/name", controller.SubjectDelController)
 		}
 	}
 }

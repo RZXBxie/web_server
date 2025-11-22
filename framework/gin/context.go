@@ -21,7 +21,8 @@ import (
 	"strings"
 	"sync"
 	"time"
-
+	
+	"github.com/RZXBxie/web_server/framework"
 	"github.com/gin-contrib/sse"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/gin-gonic/gin/render"
@@ -61,38 +62,41 @@ type Context struct {
 	writermem responseWriter
 	Request   *http.Request
 	Writer    ResponseWriter
-
+	
 	Params   Params
 	handlers HandlersChain
 	index    int8
 	fullPath string
-
+	
 	engine       *Engine
 	params       *Params
 	skippedNodes *[]skippedNode
-
+	
 	// This mutex protects Keys map.
 	mu sync.RWMutex
-
+	
 	// Keys is a key/value pair exclusively for the context of each request.
 	Keys map[any]any
-
+	
 	// Errors is a list of errors attached to all the handlers/middlewares who used this context.
 	Errors errorMsgs
-
+	
 	// Accepted defines a list of manually accepted formats for content negotiation.
 	Accepted []string
-
+	
 	// queryCache caches the query result from c.Request.URL.Query().
 	queryCache url.Values
-
+	
 	// formCache caches c.Request.PostForm, which contains the parsed form data from POST, PATCH,
 	// or PUT body parameters.
 	formCache url.Values
-
+	
 	// SameSite allows a server to define a cookie attribute making it impossible for
 	// the browser to send this cookie along with cross-site requests.
 	sameSite http.SameSite
+	
+	// container Context中保存服务容器
+	container framework.Container
 }
 
 /************************************/
@@ -104,7 +108,7 @@ func (c *Context) reset() {
 	c.Params = c.Params[:0]
 	c.handlers = nil
 	c.index = -1
-
+	
 	c.fullPath = ""
 	c.Keys = nil
 	c.Errors = c.Errors[:0]
@@ -124,22 +128,22 @@ func (c *Context) Copy() *Context {
 		Request:   c.Request,
 		engine:    c.engine,
 	}
-
+	
 	cp.writermem.ResponseWriter = nil
 	cp.Writer = &cp.writermem
 	cp.index = abortIndex
 	cp.handlers = nil
 	cp.fullPath = c.fullPath
-
+	
 	cKeys := c.Keys
 	c.mu.RLock()
 	cp.Keys = maps.Clone(cKeys)
 	c.mu.RUnlock()
-
+	
 	cParams := c.Params
 	cp.Params = make([]Param, len(cParams))
 	copy(cp.Params, cParams)
-
+	
 	return &cp
 }
 
@@ -252,7 +256,7 @@ func (c *Context) Error(err error) *Error {
 	if err == nil {
 		panic("err is nil")
 	}
-
+	
 	var parsedError *Error
 	ok := errors.As(err, &parsedError)
 	if !ok {
@@ -261,7 +265,7 @@ func (c *Context) Error(err error) *Error {
 			Type: ErrorTypePrivate,
 		}
 	}
-
+	
 	c.Errors = append(c.Errors, parsedError)
 	return parsedError
 }
@@ -278,7 +282,7 @@ func (c *Context) Set(key any, value any) {
 	if c.Keys == nil {
 		c.Keys = make(map[any]any)
 	}
-
+	
 	c.Keys[key] = value
 }
 
@@ -664,22 +668,22 @@ func getMapFromFormData(m map[string][]string, key string) (map[string]string, b
 	d := make(map[string]string)
 	found := false
 	keyLen := len(key)
-
+	
 	for k, v := range m {
 		if len(k) < keyLen+3 { // key + "[" + at least one char + "]"
 			continue
 		}
-
+		
 		if k[:keyLen] != key || k[keyLen] != '[' {
 			continue
 		}
-
+		
 		if j := strings.IndexByte(k[keyLen+1:], ']'); j > 0 {
 			found = true
 			d[k[keyLen+1:keyLen+1+j]] = v[0]
 		}
 	}
-
+	
 	return d, found
 }
 
@@ -711,7 +715,7 @@ func (c *Context) SaveUploadedFile(file *multipart.FileHeader, dst string, perm 
 		return err
 	}
 	defer src.Close()
-
+	
 	var mode os.FileMode = 0o750
 	if len(perm) > 0 {
 		mode = perm[0]
@@ -723,13 +727,13 @@ func (c *Context) SaveUploadedFile(file *multipart.FileHeader, dst string, perm 
 	if err = os.Chmod(dir, mode); err != nil {
 		return err
 	}
-
+	
 	out, err := os.Create(dst)
 	if err != nil {
 		return err
 	}
 	defer out.Close()
-
+	
 	_, err = io.Copy(out, src)
 	return err
 }
@@ -800,7 +804,7 @@ func (c *Context) MustBindWith(obj any, b binding.Binding) error {
 	err := c.ShouldBindWith(obj, b)
 	if err != nil {
 		var maxBytesErr *http.MaxBytesError
-
+		
 		// Note: When using sonic or go-json as JSON encoder, they do not propagate the http.MaxBytesError error
 		// https://github.com/goccy/go-json/issues/485
 		// https://github.com/bytedance/sonic/issues/800
@@ -939,7 +943,7 @@ func (c *Context) ClientIP() string {
 			return addr
 		}
 	}
-
+	
 	// Legacy "AppEngine" flag
 	if c.engine.AppEngine {
 		log.Println(`The AppEngine flag is going to be deprecated. Please check issues #2723 and #2739 and use 'TrustedPlatform: gin.PlatformGoogleAppEngine' instead.`)
@@ -947,7 +951,7 @@ func (c *Context) ClientIP() string {
 			return addr
 		}
 	}
-
+	
 	// It also checks if the remoteIP is a trusted proxy or not.
 	// In order to perform this validation, it will see if the IP is contained within at least one of the CIDR blocks
 	// defined by Engine.SetTrustedProxies()
@@ -956,7 +960,7 @@ func (c *Context) ClientIP() string {
 		return ""
 	}
 	trusted := c.engine.isTrustedProxy(remoteIP)
-
+	
 	if trusted && c.engine.ForwardedByClientIP && c.engine.RemoteIPHeaders != nil {
 		for _, headerName := range c.engine.RemoteIPHeaders {
 			ip, valid := c.engine.validateHeader(c.requestHeader(headerName))
@@ -1095,13 +1099,13 @@ func (c *Context) Cookie(name string) (string, error) {
 // Render writes the response headers and calls render.Render to render data.
 func (c *Context) Render(code int, r render.Render) {
 	c.Status(code)
-
+	
 	if !bodyAllowedForStatus(code) {
 		r.WriteContentType(c.Writer)
 		c.Writer.WriteHeaderNow()
 		return
 	}
-
+	
 	if err := r.Render(c.Writer); err != nil {
 		// Pushing error to c.Errors
 		_ = c.Error(err)
@@ -1225,9 +1229,9 @@ func (c *Context) FileFromFS(filepath string, fs http.FileSystem) {
 	defer func(old string) {
 		c.Request.URL.Path = old
 	}(c.Request.URL.Path)
-
+	
 	c.Request.URL.Path = filepath
-
+	
 	http.FileServer(fs).ServeHTTP(c.Writer, c.Request)
 }
 
@@ -1298,27 +1302,27 @@ func (c *Context) Negotiate(code int, config Negotiate) {
 	case binding.MIMEJSON:
 		data := chooseData(config.JSONData, config.Data)
 		c.JSON(code, data)
-
+	
 	case binding.MIMEHTML:
 		data := chooseData(config.HTMLData, config.Data)
 		c.HTML(code, config.HTMLName, data)
-
+	
 	case binding.MIMEXML:
 		data := chooseData(config.XMLData, config.Data)
 		c.XML(code, data)
-
+	
 	case binding.MIMEYAML, binding.MIMEYAML2:
 		data := chooseData(config.YAMLData, config.Data)
 		c.YAML(code, data)
-
+	
 	case binding.MIMETOML:
 		data := chooseData(config.TOMLData, config.Data)
 		c.TOML(code, data)
-
+	
 	case binding.MIMEPROTOBUF:
 		data := chooseData(config.PROTOBUFData, config.Data)
 		c.ProtoBuf(code, data)
-
+	
 	default:
 		c.AbortWithError(http.StatusNotAcceptable, errors.New("the accepted formats are not offered by the server")) //nolint: errcheck
 	}
@@ -1327,7 +1331,7 @@ func (c *Context) Negotiate(code int, config Negotiate) {
 // NegotiateFormat returns an acceptable Accept format.
 func (c *Context) NegotiateFormat(offered ...string) string {
 	assert1(len(offered) > 0, "you must provide at least one offer")
-
+	
 	if c.Accepted == nil {
 		c.Accepted = parseAccept(c.requestHeader("Accept"))
 	}
@@ -1414,4 +1418,24 @@ func (c *Context) Value(key any) any {
 		return nil
 	}
 	return c.Request.Context().Value(key)
+}
+
+func (engine *Engine) Bind(provider framework.ServiceProvider) error {
+	return engine.container.Bind(provider)
+}
+
+func (engine *Engine) IsBind(key string) bool {
+	return engine.container.IsBind(key)
+}
+
+func (c *Context) Make(key string) (interface{}, error) {
+	return c.container.Make(key)
+}
+
+func (c *Context) MustMake(key string) interface{} {
+	return c.container.MustMake(key)
+}
+
+func (c *Context) MakeNew(key string, params []interface{}) (interface{}, error) {
+	return c.container.MakeNew(key, params)
 }

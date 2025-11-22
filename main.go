@@ -10,10 +10,15 @@ import (
 
 	"github.com/RZXBxie/web_server/framework/gin"
 	"github.com/RZXBxie/web_server/framework/middleware"
+	"github.com/RZXBxie/web_server/provider/demo"
 )
 
 func main() {
 	core := gin.New()
+
+	// 绑定服务提供者
+	core.Bind(&demo.DemoServiceProvider{})
+
 	core.Use(middleware.Recovery())
 	core.Use(middleware.Cost())
 	registerRouter(core)

@@ -80,6 +80,8 @@ func (c *MyContainer) IsBind(key string) bool {
 
 // findServiceProvider 查找是否已经注册了这个服务提供者，如果没有注册，则返回nil
 func (c *MyContainer) findServiceProvider(key string) ServiceProvider {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
 	if sp, ok := c.providers[key]; ok {
 		return sp
 	}
@@ -104,12 +106,12 @@ func (c *MyContainer) MakeNew(key string, params ...interface{}) (interface{}, e
 
 // make 真正的实例化一个服务
 func (c *MyContainer) make(key string, params []interface{}, forceNew bool) (interface{}, error) {
-	c.lock.Lock()
-	defer c.lock.Unlock()
+	c.lock.RLock()
+	defer c.lock.RUnlock()
 
 	// 查询是否已经注册了这个服务提供者，如果没有注册，则报错
-	sp, ok := c.providers[key]
-	if !ok {
+	sp := c.findServiceProvider(key)
+	if sp == nil {
 		return nil, errors.New("contract " + key + " not found.")
 	}
 	if forceNew {
